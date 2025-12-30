@@ -356,7 +356,7 @@ idf.py menuconfig
 ### Runtime Errors
 
 **Error:** `E (xxx) spi_master: spi_bus_initialize: SPI2 already in use`  
-**Solution:** Another component already initialised SPI2. Change to SPI1_HOST. SPI0_HHOST is resurved for flash - don't use that.
+**Solution:** Another component already initialised SPI2. Change to SPI1_HOST. SPI0_HOST is resurved for flash - don't use that.
 
 **Error:** `E (xxx) w5500.mac: w5500_verify_id(210): wrong chip ID`  
 **Solution:** 
