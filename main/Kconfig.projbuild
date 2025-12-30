@@ -1,0 +1,93 @@
+menu "WiFi Configuration"
+
+    config WIFI_SSID
+        string "WiFi SSID"
+        default "myssid"
+        help
+            SSID (network name) to connect to.
+
+    config WIFI_PASSWORD
+        string "WiFi Password"
+        default "mypassword"
+        help
+            WiFi password (WPA2).
+
+endmenu
+
+menu "Ethernet Configuration"
+    config ENABLE_ETHERNET
+        bool "Enable Ethernet (W5500)"
+        default y
+        select ETH_ENABLED
+        select ETH_USE_SPI_ETHERNET
+        select ETH_SPI_ETHERNET_W5500
+        help
+            Enable W5500 Ethernet module for wired network connectivity.
+
+    if ENABLE_ETHERNET
+        config ETH_SPI_HOST
+            int "SPI Host"
+            default 2
+            range 0 2
+            help
+                SPI peripheral to use for W5500 communication.
+                SPI2_HOST = 2 (recommended for ESP32-S3)
+
+        config ETH_SPI_SCLK_GPIO
+            int "SPI SCLK GPIO"
+            range 0 48
+            default 13
+            help
+                GPIO pin for SPI clock line (SCK).
+
+        config ETH_SPI_MOSI_GPIO
+            int "SPI MOSI GPIO"
+            range 0 48
+            default 11
+            help
+                GPIO pin for SPI Master Out Slave In (MOSI).
+
+        config ETH_SPI_MISO_GPIO
+            int "SPI MISO GPIO"
+            range 0 48
+            default 12
+            help
+                GPIO pin for SPI Master In Slave Out (MISO).
+
+        config ETH_SPI_CS_GPIO
+            int "SPI CS GPIO"
+            range 0 48
+            default 14
+            help
+                GPIO pin for SPI Chip Select (CS).
+
+        config ETH_SPI_INT_GPIO
+            int "Interrupt GPIO"
+            range -1 48
+            default 10
+            help
+                GPIO pin for W5500 interrupt (optional, -1 to disable).
+
+        config ETH_SPI_CLOCK_MHZ
+            int "SPI Clock Speed (MHz)"
+            default 20
+            range 1 40
+            help
+                SPI clock frequency for W5500 communication.
+                20MHz is recommended for stable operation.
+
+        config ETH_PHY_RST_GPIO
+            int "PHY Reset GPIO"
+            range -1 48
+            default 9
+            help
+                GPIO pin for W5500 reset (optional, -1 to disable).
+
+        config ETH_PHY_ADDR
+            int "PHY Address"
+            default 1
+            range 0 31
+            help
+                W5500 PHY address (usually 1).
+    endif
+endmenu
