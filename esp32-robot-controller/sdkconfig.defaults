@@ -1,0 +1,111 @@
+# ESP32-S3 Dual Interface Network Example - Default Configuration
+# This file contains the essential settings for W5500 Ethernet + WiFi
+#
+# ============================================================================
+# CRITICAL: ESP32-S3 Target and Flash/PSRAM Configuration
+# ============================================================================
+#
+# This configuration is REQUIRED for ESP32-S3 with 16MB Flash + 8MB PSRAM
+# Boards affected: Waveshare ESP32-S3-ETH, ESP32-S3-DevKitC-1, etc.
+#
+# WITHOUT these settings, the project may:
+# - Fail to build with flash/PSRAM errors
+# - Build but fail to boot (brownout, heap errors)
+# - Run but crash under load
+#
+# If your board has DIFFERENT specs, adjust the flash/PSRAM settings below!
+# ============================================================================
+
+# ============================================================================
+# ESP32-S3 Chip Configuration (CRITICAL for Waveshare ESP32-S3-ETH)
+# ============================================================================
+
+# Set target to ESP32-S3 (REQUIRED)
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_IDF_TARGET_ESP32S3=y
+
+# Flash Configuration (16MB) - CRITICAL
+# Most ESP32-S3 boards have 16MB flash (Waveshare ESP32-S3-ETH standard)
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+
+# Partition Table - Use large single app partition for 16MB flash
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
+
+# PSRAM Configuration (8MB Octal PSRAM) - CRITICAL for stability
+# Waveshare ESP32-S3-ETH has 8MB Octal PSRAM
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+
+# PSRAM Memory Allocation Strategy
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=16384
+CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=32768
+
+# Allow large allocations in PSRAM
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+
+# USB Configuration (ESP32-S3 has native USB)
+# Use USB Serial/JTAG for console output (not UART0)
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+
+# ============================================================================
+# Ethernet Configuration (W5500 via SPI)
+# ============================================================================
+
+# Ethernet is controlled via menuconfig: Ethernet Configuration menu
+# When enabled, these settings apply:
+# CONFIG_ETH_ENABLED=y
+# CONFIG_ETH_USE_SPI_ETHERNET=y
+# CONFIG_ETH_SPI_ETHERNET_W5500=y
+
+# Enable Ethernet by default (can be disabled in menuconfig)
+CONFIG_ENABLE_ETHERNET=y
+
+# ============================================================================
+# WiFi Configuration
+# ============================================================================
+
+# WiFi is enabled by default in ESP-IDF
+# SSID and password are set via menuconfig or Kconfig.projbuild
+
+# ============================================================================
+# Network Stack Configuration
+# ============================================================================
+
+# Enable both WiFi and Ethernet routing
+CONFIG_LWIP_IP_FORWARD=y
+CONFIG_LWIP_IPV4=y
+
+# Increase LWIP task priority for better performance
+CONFIG_LWIP_TCPIP_TASK_PRIO=19
+
+# ============================================================================
+# Logging Configuration (Optional - for debugging)
+# ============================================================================
+
+# Set default log level to INFO
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+
+# Enable specific component logging for debugging (optional)
+# CONFIG_LOG_DEFAULT_LEVEL_DEBUG=y
+# CONFIG_ETH_LOG_LEVEL_DEBUG=y
+# CONFIG_WIFI_LOG_LEVEL_DEBUG=y
+
+# ============================================================================
+# FreeRTOS Configuration
+# ============================================================================
+
+# Increase main task stack size
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# ============================================================================
+# Compiler Options
+# ============================================================================
+
+# Enable compiler warnings
+CONFIG_COMPILER_WARN_WRITE_STRINGS=y

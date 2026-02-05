@@ -1,0 +1,55 @@
+# Development
+node_modules/
+.env
+.env.local
+*.log
+
+# Build outputs
+build/
+dist/
+*.o
+*.a
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+/tmp/
+*.tmp
+*.bak
+
+# Secrets
+*.key
+*.pem
+*.p12
+secrets/
+*.zip
+*.tar.gz
+# ESP-IDF build artifacts
+build/
+sdkconfig
+sdkconfig.old
+*.pyc
+
+# Managed components
+managed_components/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Dependencies
+dependencies.lock

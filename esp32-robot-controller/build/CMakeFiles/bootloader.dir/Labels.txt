@@ -1,0 +1,13 @@
+# Target labels
+ bootloader
+# Source files and their labels
+/Users/ahmedal/ESP Community/esp32-robot-controller/build/CMakeFiles/bootloader
+/Users/ahmedal/ESP Community/esp32-robot-controller/build/CMakeFiles/bootloader.rule
+/Users/ahmedal/ESP Community/esp32-robot-controller/build/CMakeFiles/bootloader-complete.rule
+/Users/ahmedal/ESP Community/esp32-robot-controller/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
+/Users/ahmedal/ESP Community/esp32-robot-controller/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+/Users/ahmedal/ESP Community/esp32-robot-controller/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+/Users/ahmedal/ESP Community/esp32-robot-controller/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+/Users/ahmedal/ESP Community/esp32-robot-controller/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+/Users/ahmedal/ESP Community/esp32-robot-controller/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+/Users/ahmedal/ESP Community/esp32-robot-controller/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule
