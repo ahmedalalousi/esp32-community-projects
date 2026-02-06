@@ -1,0 +1,25 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "network.c"
+        "motor_driver.c"
+        "sensors.c"
+        "tcp_server.c"
+        "tcp_client.c"
+        "camera_server.c"
+    INCLUDE_DIRS
+        "."
+    REQUIRES
+        driver
+        esp_event
+        esp_http_server
+        esp_wifi
+        esp_eth
+        esp_netif
+        nvs_flash
+        lwip
+        json
+        esp_timer
+    PRIV_REQUIRES
+        esp_psram
+)

@@ -597,8 +597,8 @@ CONFIG_PARTITION_TABLE_MD5=y
 #
 # WiFi Configuration
 #
-CONFIG_WIFI_SSID="myssid"
-CONFIG_WIFI_PASSWORD="mypassword"
+CONFIG_WIFI_SSID="Sumeria2.4"
+CONFIG_WIFI_PASSWORD="WhodaresW1ns"
 # end of WiFi Configuration
 
 #

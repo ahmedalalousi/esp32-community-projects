@@ -83,17 +83,22 @@ void app_main(void)
     /* Wait for network connection before starting TCP services */
     ESP_LOGI(TAG, "Waiting for network connection...");
     int retries = 0;
-    while (!network_is_connected() && retries < 30) {
+    while (!network_is_connected(NETWORK_IF_ETHERNET) &&
+	   !network_is_connected(NETWORK_IF_WIFI) &&
+	   retries < 30) {
         vTaskDelay(pdMS_TO_TICKS(1000));
         retries++;
     }
 
-    if (!network_is_connected()) {
+    if (!network_is_connected(NETWORK_IF_ETHERNET) &&
+	!network_is_connected(NETWORK_IF_WIFI)) {
         ESP_LOGE(TAG, "Network connection timeout — continuing anyway");
     } else {
-        char ip[16];
-        network_get_ip(ip, sizeof(ip));
-        ESP_LOGI(TAG, "Network connected — IP: %s", ip);
+	    const char *ip = network_get_ip(
+		network_is_connected(NETWORK_IF_ETHERNET)
+		? NETWORK_IF_ETHERNET
+		: NETWORK_IF_WIFI);
+	    ESP_LOGI(TAG, "Connected, IP: %s", ip ? ip : "unknown");
     }
 
     /* ---------------------------------------------------------------

@@ -20,6 +20,7 @@
 
 #include "tcp_client.h"
 #include "sensors.h"
+#include "motor_driver.h"
 
 static const char *TAG = "TCP_CLT";
 

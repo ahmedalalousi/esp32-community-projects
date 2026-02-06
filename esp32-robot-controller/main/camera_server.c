@@ -64,7 +64,9 @@ static const char *TAG = "CAM_SVR";
  * ========================================================================= */
 
 static httpd_handle_t http_server = NULL;
+#ifdef CONFIG_CAMERA_ENABLED
 static bool camera_initialised = false;
+#endif
 
 /* =========================================================================
  * MJPEG Stream Handler

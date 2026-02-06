@@ -6,14 +6,15 @@
  * configurable interval and feeds IMU yaw rate into the motor driver
  * PID controller via motor_driver_update_imu().
  *
- * URM09 (DFRobot I2C Ultrasonic):
- *   - Default address: 0x11
- *   - Register 0x01: trigger measurement (write 0x01)
- *   - Register 0x03-0x04: distance in mm (big-endian uint16)
- *   - Measurement time: ~100ms
+ * URM09 (DFRobot Gravity I²C Ultrasonic, SKU:SEN0304):
+ *   - Default address: 0x11 (configurable via CONFIG_URM09_I2C_ADDR)
+ *   - Register 0x07: configuration (mode + range)
+ *   - Register 0x08: command (write 0x01 to trigger)
+ *   - Register 0x03-0x04: distance in cm (big-endian uint16)
+ *   - Measurement cycle: ~40ms for 500cm range
  *
  * MPU-6050:
- *   - Default address: 0x68
+ *   - Default address: 0x68 (configurable via CONFIG_IMU_I2C_ADDR)
  *   - Register 0x6B: power management (write 0x00 to wake)
  *   - Registers 0x3B-0x48: accel/temp/gyro raw data (14 bytes)
  *   - Accel scale: ±2g  → 16384 LSB/g
@@ -46,16 +47,33 @@ static const char *TAG = "SENSORS";
 #define I2C_TIMEOUT_MS      100
 
 /* =========================================================================
- * URM09 Register Map
+ * URM09 Register Map (DFRobot SEN0304 datasheet)
+ *
+ *   0x00 = Device I2C address (R/W, default 0x11)
+ *   0x01 = Product ID (R, should read 0x01)
+ *   0x02 = Version (R, 0x10 = V1.0)
+ *   0x03 = Distance high byte (R, 1 LSB = 1 cm)
+ *   0x04 = Distance low byte (R)
+ *   0x05 = Temperature high byte (R, value / 10 = °C)
+ *   0x06 = Temperature low byte (R)
+ *   0x07 = Config register (R/W): bit7=mode, bit5-4=range
+ *   0x08 = Command register (R/W, write 0x01 to trigger measurement)
  * ========================================================================= */
 
-#define URM09_REG_CMD           0x01    /* Command register */
 #define URM09_REG_DIST_H        0x03    /* Distance high byte */
 #define URM09_REG_DIST_L        0x04    /* Distance low byte */
+#define URM09_REG_CFG           0x07    /* Configuration register */
+#define URM09_REG_CMD           0x08    /* Command register */
+
 #define URM09_CMD_MEASURE       0x01    /* Trigger one measurement */
 
-#define URM09_MIN_DISTANCE_MM   20      /* Minimum measurable distance */
-#define URM09_MAX_DISTANCE_MM   7500    /* Maximum measurable distance */
+/* Config register bits */
+#define URM09_CFG_PASSIVE       0x00    /* Passive mode (manual trigger) */
+#define URM09_CFG_RANGE_500CM   0x20    /* 500cm range (~40ms cycle) */
+
+/* Distance limits (datasheet: 2cm to 500cm, 1 LSB = 1 cm) */
+#define URM09_MIN_DISTANCE_CM   2
+#define URM09_MAX_DISTANCE_CM   500
 
 /* =========================================================================
  * MPU-6050 Register Map
@@ -121,7 +139,7 @@ static esp_err_t i2c_read_regs(uint8_t addr, uint8_t start_reg,
  */
 static bool i2c_probe(uint8_t addr)
 {
-    uint8_t dummy;
+    uint8_t dummy = 0;
     esp_err_t err = i2c_master_write_to_device(I2C_MASTER_NUM, addr,
                                                 &dummy, 0,
                                                 pdMS_TO_TICKS(I2C_TIMEOUT_MS));
@@ -217,7 +235,29 @@ static esp_err_t mpu6050_read(imu_data_t *out)
  * ========================================================================= */
 
 /**
+ * @brief Initialise URM09 sensor
+ *
+ * Configures passive mode with 500cm range.
+ */
+static esp_err_t urm09_init(void)
+{
+    /* Configure: passive mode, 500cm range */
+    uint8_t cfg_val = URM09_CFG_PASSIVE | URM09_CFG_RANGE_500CM;
+    esp_err_t err = i2c_write_reg(cfg.urm09_addr, URM09_REG_CFG, cfg_val);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "URM09 config write failed: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    ESP_LOGI(TAG, "URM09 initialised at 0x%02X (range=500cm, passive mode)",
+             cfg.urm09_addr);
+    return ESP_OK;
+}
+
+/**
  * @brief Trigger a URM09 measurement
+ *
+ * Write 0x01 to command register (0x08) in passive mode.
  */
 static esp_err_t urm09_trigger(void)
 {
@@ -227,7 +267,8 @@ static esp_err_t urm09_trigger(void)
 /**
  * @brief Read URM09 distance result
  *
- * Must be called ≥100ms after urm09_trigger().
+ * Must be called ≥40ms after urm09_trigger() for 500cm range.
+ * Distance is in centimetres (1 LSB = 1 cm per datasheet).
  */
 static esp_err_t urm09_read(range_data_t *out)
 {
@@ -238,14 +279,16 @@ static esp_err_t urm09_read(range_data_t *out)
         return err;
     }
 
-    uint16_t dist_mm = ((uint16_t)raw[0] << 8) | raw[1];
+    /* Distance is big-endian, units are centimetres */
+    uint16_t dist_cm = ((uint16_t)raw[0] << 8) | raw[1];
 
     /* Validate range */
-    if (dist_mm < URM09_MIN_DISTANCE_MM || dist_mm > URM09_MAX_DISTANCE_MM) {
+    if (dist_cm < URM09_MIN_DISTANCE_CM || dist_cm > URM09_MAX_DISTANCE_CM) {
         out->distance_m = 0.0f;
         out->valid = false;
     } else {
-        out->distance_m = (float)dist_mm / 1000.0f;
+        /* Convert cm to metres */
+        out->distance_m = (float)dist_cm / 100.0f;
         out->valid = true;
     }
 
@@ -380,10 +423,13 @@ esp_err_t sensor_init(const sensor_config_t *config)
         ESP_LOGW(TAG, "MPU-6050 not found at 0x%02X", cfg.imu_addr);
     }
 
-    /* Probe URM09 */
+    /* Probe and initialise URM09 */
     urm09_detected = i2c_probe(cfg.urm09_addr);
     if (urm09_detected) {
-        ESP_LOGI(TAG, "URM09 detected at 0x%02X", cfg.urm09_addr);
+        err = urm09_init();
+        if (err != ESP_OK) {
+            urm09_detected = false;
+        }
     } else {
         ESP_LOGW(TAG, "URM09 not found at 0x%02X", cfg.urm09_addr);
     }

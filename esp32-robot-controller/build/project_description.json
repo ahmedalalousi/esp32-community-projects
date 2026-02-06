@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "esp32-robot-controller",
-    "project_version":    "4f9fd0d-dirty",
+    "project_version":    "5f8b8ef-dirty",
     "project_path":       "/Users/ahmedal/ESP Community/esp32-robot-controller",
     "idf_path":           "/Users/ahmedal/esp/esp-idf",
     "build_dir":          "/Users/ahmedal/ESP Community/esp32-robot-controller/build",

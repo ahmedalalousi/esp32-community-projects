@@ -1,0 +1,106 @@
+# ============================================================================
+# Robot Controller — sdkconfig.defaults
+#
+# Default configuration for Waveshare ESP32-S3-ETH board.
+# These values are applied on first build (before menuconfig).
+#
+# Author: Ahmed Al-Alousi
+# Date: February 2026
+# ============================================================================
+
+# ============================================================================
+# Target / Flash / PSRAM (Waveshare ESP32-S3-ETH: 16MB flash, 8MB PSRAM)
+# ============================================================================
+
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+
+# ============================================================================
+# WiFi
+# ============================================================================
+
+CONFIG_WIFI_SSID="myssid"
+CONFIG_WIFI_PASSWORD="mypassword"
+
+# ============================================================================
+# Ethernet (W5500 via SPI — Waveshare ESP32-S3-ETH pinout)
+# ============================================================================
+
+CONFIG_ENABLE_ETHERNET=y
+CONFIG_ETH_SPI_HOST=2
+CONFIG_ETH_SPI_SCLK_GPIO=13
+CONFIG_ETH_SPI_MOSI_GPIO=11
+CONFIG_ETH_SPI_MISO_GPIO=12
+CONFIG_ETH_SPI_CS_GPIO=14
+CONFIG_ETH_SPI_INT_GPIO=10
+CONFIG_ETH_SPI_CLOCK_MHZ=20
+CONFIG_ETH_PHY_RST_GPIO=9
+CONFIG_ETH_PHY_ADDR=1
+
+# ============================================================================
+# Motor Driver
+# ============================================================================
+
+CONFIG_MOTOR_DRIVE_MODE_FOUR_WHEEL=y
+CONFIG_MOTOR_WHEEL_BASE_MM=200
+CONFIG_MOTOR_MAX_SPEED_MMS=500
+CONFIG_MOTOR_MAX_DUTY_PCT=80
+CONFIG_MOTOR_PWM_FREQ_HZ=5000
+CONFIG_MOTOR_FL_PWM_GPIO=4
+CONFIG_MOTOR_FL_DIR_GPIO=5
+CONFIG_MOTOR_FR_PWM_GPIO=6
+CONFIG_MOTOR_FR_DIR_GPIO=7
+CONFIG_MOTOR_RL_PWM_GPIO=15
+CONFIG_MOTOR_RL_DIR_GPIO=16
+CONFIG_MOTOR_RR_PWM_GPIO=17
+CONFIG_MOTOR_RR_DIR_GPIO=18
+
+# ============================================================================
+# PID Heading Correction
+# ============================================================================
+
+CONFIG_PID_ENABLED=y
+CONFIG_PID_KP=150
+CONFIG_PID_KI=20
+CONFIG_PID_KD=5
+CONFIG_PID_INTEGRAL_LIMIT=50
+CONFIG_PID_OUTPUT_LIMIT=30
+
+# ============================================================================
+# I2C Bus (shared by IMU and URM09)
+# ============================================================================
+
+CONFIG_SENSOR_I2C_SDA=38
+CONFIG_SENSOR_I2C_SCL=39
+CONFIG_IMU_I2C_ADDR=0x68
+CONFIG_URM09_I2C_ADDR=0x11
+
+# ============================================================================
+# Sensor Task
+# ============================================================================
+
+CONFIG_SENSOR_TASK_STACK_SIZE=4096
+CONFIG_SENSOR_TASK_PRIORITY=6
+
+# ============================================================================
+# TCP Communication
+# ============================================================================
+
+CONFIG_TCP_CMD_PORT=8080
+CONFIG_TCP_SENSOR_PORT=8081
+CONFIG_TCP_SENSOR_HOST="192.168.1.100"
+CONFIG_TCP_CAMERA_PORT=8082
+
+# ============================================================================
+# Camera (disabled by default — enable via menuconfig)
+# ============================================================================
+
+# CONFIG_CAMERA_ENABLED is not set
+
+# ============================================================================
+# Compiler
+# ============================================================================
+
+CONFIG_COMPILER_WARN_WRITE_STRINGS=y
