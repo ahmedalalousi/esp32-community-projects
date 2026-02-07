@@ -131,6 +131,22 @@ esp_err_t network_init(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     
+#ifdef CONFIG_ENABLE_ETHERNET
+    /*
+     * Install GPIO ISR service BEFORE Ethernet initialisation.
+     * The W5500 driver uses interrupt mode (GPIO 10 on Waveshare ESP32-S3-ETH)
+     * and needs the ISR service to be available.
+     *
+     * ESP_INTR_FLAG_SHARED allows multiple handlers on the same interrupt.
+     * We ignore ESP_ERR_INVALID_STATE which means it's already installed.
+     */
+    esp_err_t isr_err = gpio_install_isr_service(ESP_INTR_FLAG_SHARED);
+    if (isr_err != ESP_OK && isr_err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGE(TAG, "Failed to install GPIO ISR service: %s", esp_err_to_name(isr_err));
+        return isr_err;
+    }
+#endif
+    
     // =========================================================================
     // WiFi Initialisation
     // =========================================================================
@@ -181,7 +197,6 @@ esp_err_t network_init(void)
     ESP_ERROR_CHECK(spi_bus_initialize(CONFIG_ETH_SPI_HOST, &spi_bus_cfg,
                                        SPI_DMA_CH_AUTO));
     
-    // Configure W5500 SPI device
     // Configure W5500 SPI device (CRITICAL: W5500 requires specific bit configuration)
     spi_device_interface_config_t spi_devcfg = {
         .command_bits = 16,        // W5500 requires 16-bit command

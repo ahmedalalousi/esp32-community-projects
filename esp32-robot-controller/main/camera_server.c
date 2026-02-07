@@ -20,6 +20,7 @@
 #include "esp_log.h"
 #include "esp_http_server.h"
 #include "esp_camera.h"
+#include "driver/gpio.h"
 
 #include "camera_server.h"
 
@@ -152,12 +153,49 @@ esp_err_t camera_init(void)
         return ESP_ERR_INVALID_STATE;
     }
 
+    /*
+     * Camera configuration for Waveshare ESP32-S3-ETH.
+     *
+     * IMPORTANT: The camera SCCB (I2C) interface uses GPIO 47/48.
+     * We let the camera driver own these pins completely.
+     *
+     * GPIO 8 (PWDN) controls a MOSFET that powers the camera.
+     * Testing both polarities to determine correct one.
+     *
+     * Power-on sequence:
+     *   1. Set PWDN to enable power
+     *   2. Wait for power to stabilise
+     *   3. Let esp_camera_init() handle XCLK and probe
+     */
+    
+    /* 
+     * Try GPIO 8 LOW = power ON (typical PWDN is active-high, so LOW = not powered down)
+     * If this doesn't work, we'll try HIGH.
+     */
+    gpio_config_t pwdn_conf = {
+        .pin_bit_mask = (1ULL << 8),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    gpio_config(&pwdn_conf);
+    
+    /* Power cycle sequence */
+    gpio_set_level(8, 1);  /* Power OFF first (PWDN high = powered down) */
+    vTaskDelay(pdMS_TO_TICKS(50));
+    gpio_set_level(8, 0);  /* Power ON (PWDN low = active) */
+    vTaskDelay(pdMS_TO_TICKS(100));  /* Let power stabilise */
+    
+    ESP_LOGI(TAG, "Camera power enabled (GPIO 8 = LOW, PWDN inactive)");
+    
     camera_config_t cam_cfg = {
-        .pin_pwdn   = CAM_PIN_PWDN,
+        .pin_pwdn   = -1,               /* We handle power manually above */
         .pin_reset  = CAM_PIN_RESET,
         .pin_xclk   = CAM_PIN_XCLK,
-        .pin_sccb_sda = CAM_PIN_SIOD,
-        .pin_sccb_scl = CAM_PIN_SIOC,
+        /* Let camera driver own SCCB pins */
+        .pin_sccb_sda = CAM_PIN_SIOD,   /* GPIO 48 */
+        .pin_sccb_scl = CAM_PIN_SIOC,   /* GPIO 47 */
         .pin_d7     = CAM_PIN_D7,
         .pin_d6     = CAM_PIN_D6,
         .pin_d5     = CAM_PIN_D5,

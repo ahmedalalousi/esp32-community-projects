@@ -162,11 +162,12 @@ menu "Robot Controller Configuration"
 
         config MOTOR_MAX_SPEED_MMS
             int "Maximum speed (mm/s)"
-            default 500
-            range 100 5000
+            default 3000
+            range 100 10000
             help
                 Maximum linear speed at 100% PWM duty, in mm/s.
                 Used to convert velocity commands to PWM percentages.
+                Target: 2-3 m/s = 2000-3000 mm/s.
 
         config MOTOR_MAX_DUTY_PCT
             int "Maximum PWM duty (%)"
@@ -178,12 +179,11 @@ menu "Robot Controller Configuration"
 
         config MOTOR_PWM_FREQ_HZ
             int "PWM frequency (Hz)"
-            default 5000
+            default 20000
             range 1000 50000
             help
-                Motor PWM frequency. 5 kHz is typical for DC motors.
-                Higher frequencies reduce audible whine but increase
-                switching losses.
+                Motor PWM frequency. 20 kHz is above audible range.
+                Lower frequencies (5 kHz) may cause motor whine.
 
         menu "Motor GPIO Pins"
             comment "Must not conflict with SPI (9-14), USB (19-20), UART (43-44)"
@@ -250,8 +250,8 @@ menu "Robot Controller Configuration"
             range 0 10000
             depends on PID_ENABLED
             help
-                Proportional gain multiplied by 100.
-                Value 150 = Kp of 1.50.
+                Kp × 100 (e.g. 150 = Kp of 1.50).
+                Higher values give faster correction but may oscillate.
 
         config PID_KI
             int "Integral gain (x100)"
@@ -259,7 +259,8 @@ menu "Robot Controller Configuration"
             range 0 10000
             depends on PID_ENABLED
             help
-                Integral gain multiplied by 100. Value 20 = Ki of 0.20.
+                Ki × 100 (e.g. 20 = Ki of 0.20).
+                Helps eliminate steady-state error.
 
         config PID_KD
             int "Derivative gain (x100)"
@@ -267,16 +268,17 @@ menu "Robot Controller Configuration"
             range 0 10000
             depends on PID_ENABLED
             help
-                Derivative gain multiplied by 100. Value 5 = Kd of 0.05.
+                Kd × 100 (e.g. 5 = Kd of 0.05).
+                Dampens oscillations.
 
         config PID_INTEGRAL_LIMIT
-            int "Integral windup limit"
+            int "Integral limit"
             default 50
             range 1 1000
             depends on PID_ENABLED
             help
-                Maximum absolute value of the integral accumulator.
-                Prevents integral windup when the robot is stuck.
+                Maximum value of the integral accumulator.
+                Prevents windup during extended turns.
 
         config PID_OUTPUT_LIMIT
             int "Output limit"
@@ -284,39 +286,113 @@ menu "Robot Controller Configuration"
             range 1 100
             depends on PID_ENABLED
             help
-                Maximum absolute PID correction applied to left/right
-                motor speed difference. Limits how aggressively the
-                PID can steer.
+                Maximum correction applied to motor speed difference.
+                Units are percentage points.
 
     endmenu  # PID Heading Correction
 
     # ========================================================================
-    # I2C Bus Configuration (shared by IMU and URM09)
+    # IMU Configuration
+    # ========================================================================
+    menu "IMU Configuration"
+
+        config IMU_I2C_ADDR
+            hex "IMU I2C address"
+            default 0x68
+            help
+                7-bit I2C address of the MPU-9250/6500/6050.
+                Default is 0x68 (AD0 pin low).
+                Use 0x69 if AD0 is tied high.
+
+        choice IMU_ACCEL_RANGE
+            prompt "Accelerometer full-scale range"
+            default IMU_ACCEL_RANGE_2G
+            help
+                Select accelerometer measurement range.
+                Lower range = higher resolution.
+
+            config IMU_ACCEL_RANGE_2G
+                bool "±2g (highest resolution)"
+                help
+                    Best for detecting subtle movements.
+                    Resolution: ~0.06 mg/LSB
+
+            config IMU_ACCEL_RANGE_4G
+                bool "±4g"
+                help
+                    Good balance of range and resolution.
+                    Resolution: ~0.12 mg/LSB
+
+            config IMU_ACCEL_RANGE_8G
+                bool "±8g"
+                help
+                    For fast-moving robots or rough terrain.
+                    Resolution: ~0.24 mg/LSB
+
+            config IMU_ACCEL_RANGE_16G
+                bool "±16g (highest range)"
+                help
+                    For high-acceleration or impact detection.
+                    Resolution: ~0.49 mg/LSB
+        endchoice
+
+        choice IMU_GYRO_RANGE
+            prompt "Gyroscope full-scale range"
+            default IMU_GYRO_RANGE_250
+            help
+                Select gyroscope measurement range.
+                Lower range = higher resolution for slow rotation.
+
+            config IMU_GYRO_RANGE_250
+                bool "±250 °/s (highest resolution)"
+                help
+                    Best for slow, precise rotation tracking.
+                    Resolution: ~0.0076 °/s/LSB
+
+            config IMU_GYRO_RANGE_500
+                bool "±500 °/s"
+                help
+                    Good for moderate rotation speeds.
+                    Resolution: ~0.015 °/s/LSB
+
+            config IMU_GYRO_RANGE_1000
+                bool "±1000 °/s"
+                help
+                    For fast-turning robots.
+                    Resolution: ~0.030 °/s/LSB
+
+            config IMU_GYRO_RANGE_2000
+                bool "±2000 °/s (highest range)"
+                help
+                    For very fast rotation or spinning.
+                    Resolution: ~0.061 °/s/LSB
+        endchoice
+
+    endmenu  # IMU Configuration
+
+    # ========================================================================
+    # I2C Bus Configuration (shared by camera SCCB, IMU, and URM09)
     # ========================================================================
     menu "I2C Bus Configuration"
-        comment "Shared I2C bus for IMU and ultrasonic sensor"
+        comment "Shared I2C bus for all devices (camera, IMU, URM09)"
 
         config SENSOR_I2C_SDA
             int "I2C SDA GPIO"
-            default 38
+            default 48
             range 0 48
             help
-                GPIO pin for I2C data line. Must not conflict with
-                motor, SPI (W5500), or camera pins.
+                GPIO pin for I2C data line.
+                Waveshare ESP32-S3-ETH: GPIO 48 (directly wired to camera connector).
+                All I2C devices (camera SCCB, IMU, URM09) share this bus.
 
         config SENSOR_I2C_SCL
             int "I2C SCL GPIO"
-            default 39
+            default 47
             range 0 48
             help
                 GPIO pin for I2C clock line.
-
-        config IMU_I2C_ADDR
-            hex "MPU-6050 I2C address"
-            default 0x68
-            help
-                7-bit I2C address of the MPU-6050 IMU.
-                0x68 when AD0 is low, 0x69 when AD0 is high.
+                Waveshare ESP32-S3-ETH: GPIO 47 (directly wired to camera connector).
+                All I2C devices (camera SCCB, IMU, URM09) share this bus.
 
         config URM09_I2C_ADDR
             hex "URM09 I2C address"
@@ -350,6 +426,15 @@ menu "Robot Controller Configuration"
                 timely IMU reads for PID correction, but lower than
                 the motor control priority.
 
+        config SENSOR_POLL_INTERVAL_MS
+            int "Sensor poll interval (ms)"
+            default 100
+            range 10 1000
+            help
+                How often to read sensors. 100ms = 10 Hz.
+                Lower values give faster response but more CPU load.
+                Must be >= 40ms for URM09 at 500cm range.
+
     endmenu  # Sensor Task Configuration
 
     # ========================================================================
@@ -364,7 +449,7 @@ menu "Robot Controller Configuration"
             help
                 TCP port on which the ESP32 listens for motor commands
                 from the ROS2 waveshare_driver node on the Pi.
-                Protocol: JSON lines, e.g. {"linear":0.5,"angular":0.1}
+                Protocol: JSON lines, e.g. {"cmd":"motor","linear":0.5,"angular":0.1}
 
         config TCP_SENSOR_PORT
             int "Sensor data client port"
@@ -378,9 +463,12 @@ menu "Robot Controller Configuration"
             string "Pi IP address (sensor data destination)"
             default "192.168.1.100"
             help
-                IP address of the Raspberry Pi running the ROS2
-                waveshare_driver node. The ESP32 connects to this
-                address on the sensor port to send IMU and range data.
+                IP address of the Raspberry Pi (or Mac running Docker)
+                with the ROS2 waveshare_driver node. The ESP32 connects
+                to this address on the sensor port to send IMU and range data.
+
+                For Docker on Mac: Use your Mac's local IP address
+                (run 'ipconfig getifaddr en0' to find it).
 
         config TCP_CAMERA_PORT
             int "Camera MJPEG stream port"
@@ -393,7 +481,7 @@ menu "Robot Controller Configuration"
     endmenu  # TCP Communication
 
     # ========================================================================
-    # Camera Configuration (optional — disabled by default)
+    # Camera Configuration (Waveshare ESP32-S3-ETH pinout)
     # ========================================================================
     menu "Camera Configuration"
 
@@ -404,15 +492,17 @@ menu "Robot Controller Configuration"
                 Enable OV2640/OV5640 camera module for MJPEG streaming.
                 Disable to save resources if no camera is connected.
 
-        menu "Camera GPIO Pins"
+        menu "Camera GPIO Pins (Waveshare ESP32-S3-ETH)"
             depends on CAMERA_ENABLED
+            comment "Pinout from Waveshare ESP32-S3-ETH schematic"
 
             config CAM_PIN_PWDN
                 int "Power down pin"
-                default -1
+                default 8
                 range -1 48
                 help
-                    GPIO for camera power down. -1 if not connected.
+                    GPIO for camera power control (drives MOSFET).
+                    Waveshare ESP32-S3-ETH: GPIO 8.
 
             config CAM_PIN_RESET
                 int "Reset pin"
@@ -423,72 +513,82 @@ menu "Robot Controller Configuration"
 
             config CAM_PIN_XCLK
                 int "XCLK pin"
-                default 40
+                default 3
                 range 0 48
+                help
+                    Waveshare ESP32-S3-ETH: GPIO 3.
 
             config CAM_PIN_SIOD
-                int "SCCB SDA pin"
-                default 21
+                int "SCCB SDA pin (camera I2C)"
+                default 48
                 range 0 48
+                help
+                    Camera SCCB data pin (I2C-like protocol).
+                    Waveshare ESP32-S3-ETH: GPIO 48.
+                    WARNING: Do not use for external I2C sensors!
 
             config CAM_PIN_SIOC
-                int "SCCB SCL pin"
+                int "SCCB SCL pin (camera I2C)"
                 default 47
                 range 0 48
+                help
+                    Camera SCCB clock pin (I2C-like protocol).
+                    Waveshare ESP32-S3-ETH: GPIO 47.
+                    WARNING: Do not use for external I2C sensors!
 
             config CAM_PIN_D7
                 int "Data pin D7"
-                default 48
+                default 18
                 range 0 48
 
             config CAM_PIN_D6
                 int "Data pin D6"
-                default 46
+                default 15
                 range 0 48
 
             config CAM_PIN_D5
                 int "Data pin D5"
-                default 45
+                default 38
                 range 0 48
 
             config CAM_PIN_D4
                 int "Data pin D4"
-                default 42
+                default 40
                 range 0 48
 
             config CAM_PIN_D3
                 int "Data pin D3"
-                default 41
+                default 42
                 range 0 48
 
             config CAM_PIN_D2
                 int "Data pin D2"
-                default 2
+                default 46
                 range 0 48
 
             config CAM_PIN_D1
                 int "Data pin D1"
-                default 1
+                default 45
                 range 0 48
 
             config CAM_PIN_D0
                 int "Data pin D0"
-                default 0
+                default 41
                 range 0 48
 
             config CAM_PIN_VSYNC
                 int "VSYNC pin"
-                default 3
+                default 1
                 range 0 48
 
             config CAM_PIN_HREF
                 int "HREF pin"
-                default 8
+                default 2
                 range 0 48
 
             config CAM_PIN_PCLK
                 int "PCLK pin"
-                default 22
+                default 39
                 range 0 48
 
         endmenu  # Camera GPIO Pins

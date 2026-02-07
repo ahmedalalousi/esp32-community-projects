@@ -52,13 +52,6 @@ void app_main(void)
         return;
     }
 
-    /* Create default event loop — used by WiFi, Ethernet, and netif */
-    err = esp_event_loop_create_default();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Event loop creation failed: %s", esp_err_to_name(err));
-        return;
-    }
-
     /* ---------------------------------------------------------------
      * Step 1: Network
      *
@@ -84,21 +77,21 @@ void app_main(void)
     ESP_LOGI(TAG, "Waiting for network connection...");
     int retries = 0;
     while (!network_is_connected(NETWORK_IF_ETHERNET) &&
-	   !network_is_connected(NETWORK_IF_WIFI) &&
-	   retries < 30) {
+           !network_is_connected(NETWORK_IF_WIFI) &&
+           retries < 30) {
         vTaskDelay(pdMS_TO_TICKS(1000));
         retries++;
     }
 
     if (!network_is_connected(NETWORK_IF_ETHERNET) &&
-	!network_is_connected(NETWORK_IF_WIFI)) {
+        !network_is_connected(NETWORK_IF_WIFI)) {
         ESP_LOGE(TAG, "Network connection timeout — continuing anyway");
     } else {
-	    const char *ip = network_get_ip(
-		network_is_connected(NETWORK_IF_ETHERNET)
-		? NETWORK_IF_ETHERNET
-		: NETWORK_IF_WIFI);
-	    ESP_LOGI(TAG, "Connected, IP: %s", ip ? ip : "unknown");
+        const char *ip = network_get_ip(
+            network_is_connected(NETWORK_IF_ETHERNET)
+            ? NETWORK_IF_ETHERNET
+            : NETWORK_IF_WIFI);
+        ESP_LOGI(TAG, "Connected, IP: %s", ip ? ip : "unknown");
     }
 
     /* ---------------------------------------------------------------
@@ -114,45 +107,10 @@ void app_main(void)
     }
 
     /* ---------------------------------------------------------------
-     * Step 3: Sensors (I2C bus, IMU, ultrasonic)
-     * --------------------------------------------------------------- */
-
-    ESP_LOGI(TAG, "Initialising sensors...");
-    sensor_config_t sensor_cfg = sensor_default_config();
-    err = sensor_init(&sensor_cfg);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Sensor init failed: %s", esp_err_to_name(err));
-        /* Non-fatal */
-    } else {
-        /* Start sensor polling task */
-        err = sensor_task_start();
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Sensor task start failed: %s", esp_err_to_name(err));
-        }
-    }
-
-    /* ---------------------------------------------------------------
-     * Step 4: TCP command server (Pi → ESP32 motor commands)
-     * --------------------------------------------------------------- */
-
-    ESP_LOGI(TAG, "Starting TCP command server...");
-    err = tcp_server_start();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "TCP server start failed: %s", esp_err_to_name(err));
-    }
-
-    /* ---------------------------------------------------------------
-     * Step 5: TCP sensor client (ESP32 → Pi sensor data)
-     * --------------------------------------------------------------- */
-
-    ESP_LOGI(TAG, "Starting TCP sensor client...");
-    err = tcp_client_start();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "TCP client start failed: %s", esp_err_to_name(err));
-    }
-
-    /* ---------------------------------------------------------------
-     * Step 6: Camera (optional)
+     * Step 3: Camera (MUST be before sensors to create I2C bus)
+     *
+     * The camera's SCCB interface creates an I2C bus on GPIO 47/48.
+     * External sensors (IMU, URM09) will share this bus.
      * --------------------------------------------------------------- */
 
 #ifdef CONFIG_CAMERA_ENABLED
@@ -171,13 +129,60 @@ void app_main(void)
 #endif
 
     /* ---------------------------------------------------------------
+     * Step 4: Sensors (I2C bus shared with camera SCCB)
+     *
+     * When camera is enabled, sensors reuse the I2C bus created by
+     * the camera's SCCB driver. When camera is disabled, sensors
+     * create their own I2C bus.
+     * --------------------------------------------------------------- */
+
+    ESP_LOGI(TAG, "Initialising sensors...");
+    sensor_config_t sensor_cfg = sensor_default_config();
+    err = sensor_init(&sensor_cfg);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Sensor init failed: %s", esp_err_to_name(err));
+        /* Non-fatal */
+    } else {
+        /* Start sensor polling task */
+        err = sensor_task_start();
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Sensor task start failed: %s", esp_err_to_name(err));
+        }
+    }
+
+    /* ---------------------------------------------------------------
+     * Step 5: TCP command server (Pi → ESP32 motor commands)
+     * --------------------------------------------------------------- */
+
+    ESP_LOGI(TAG, "Starting TCP command server...");
+    err = tcp_server_start();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "TCP server start failed: %s", esp_err_to_name(err));
+    }
+
+    /* ---------------------------------------------------------------
+     * Step 6: TCP sensor client (ESP32 → Pi sensor data)
+     * --------------------------------------------------------------- */
+
+    ESP_LOGI(TAG, "Starting TCP sensor client...");
+    err = tcp_client_start();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "TCP client start failed: %s", esp_err_to_name(err));
+    }
+
+    /* ---------------------------------------------------------------
      * Done — all tasks running
      * --------------------------------------------------------------- */
 
     ESP_LOGI(TAG, "=== Robot Controller Ready ===");
-    ESP_LOGI(TAG, "  Motor driver:   %s", motor_cfg.pid_enabled ? "PID" : "open-loop");
-    ESP_LOGI(TAG, "  Drive mode:     %d", motor_cfg.drive_mode);
-    ESP_LOGI(TAG, "  IMU:            %s", sensor_imu_present() ? "detected" : "not found");
+    ESP_LOGI(TAG, "  Motor driver:   %s", motor_cfg.pid_enabled ? "PID enabled" : "open-loop");
+    ESP_LOGI(TAG, "  Drive mode:     %s",
+             motor_cfg.drive_mode == DRIVE_MODE_TWO_WHEEL ? "two-wheel" :
+             motor_cfg.drive_mode == DRIVE_MODE_FOUR_WHEEL ? "four-wheel" : "tracked");
+    ESP_LOGI(TAG, "  IMU:            %s (%s)",
+             sensor_imu_present() ? "detected" : "not found",
+             sensor_imu_type_str());
+    ESP_LOGI(TAG, "  Magnetometer:   %s", sensor_mag_present() ? "detected" : "not available");
     ESP_LOGI(TAG, "  Ultrasonic:     %s", sensor_urm09_present() ? "detected" : "not found");
     ESP_LOGI(TAG, "  TCP cmd server: port %d", CONFIG_TCP_CMD_PORT);
     ESP_LOGI(TAG, "  TCP sensor:     -> %s:%d", CONFIG_TCP_SENSOR_HOST, CONFIG_TCP_SENSOR_PORT);

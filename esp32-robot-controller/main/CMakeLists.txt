@@ -11,6 +11,7 @@ idf_component_register(
         "."
     REQUIRES
         driver
+        esp_driver_i2c
         esp_event
         esp_http_server
         esp_wifi

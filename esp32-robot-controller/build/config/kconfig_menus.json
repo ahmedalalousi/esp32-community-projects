@@ -7035,12 +7035,12 @@
                     {
                         "children": [],
                         "depends_on": null,
-                        "help": "Maximum linear speed at 100% PWM duty, in mm/s.\nUsed to convert velocity commands to PWM percentages.",
+                        "help": "Maximum linear speed at 100% PWM duty, in mm/s.\nUsed to convert velocity commands to PWM percentages.\nTarget: 2-3 m/s = 2000-3000 mm/s.",
                         "id": "MOTOR_MAX_SPEED_MMS",
                         "name": "MOTOR_MAX_SPEED_MMS",
                         "range": [
                             100,
-                            5000
+                            10000
                         ],
                         "title": "Maximum speed (mm/s)",
                         "type": "int"
@@ -7061,7 +7061,7 @@
                     {
                         "children": [],
                         "depends_on": null,
-                        "help": "Motor PWM frequency. 5 kHz is typical for DC motors.\nHigher frequencies reduce audible whine but increase\nswitching losses.",
+                        "help": "Motor PWM frequency. 20 kHz is above audible range.\nLower frequencies (5 kHz) may cause motor whine.",
                         "id": "MOTOR_PWM_FREQ_HZ",
                         "name": "MOTOR_PWM_FREQ_HZ",
                         "range": [
@@ -7196,7 +7196,7 @@
                             {
                                 "children": [],
                                 "depends_on": "PID_ENABLED",
-                                "help": "Proportional gain multiplied by 100.\nValue 150 = Kp of 1.50.",
+                                "help": "Kp \u00d7 100 (e.g. 150 = Kp of 1.50).\nHigher values give faster correction but may oscillate.",
                                 "id": "PID_KP",
                                 "name": "PID_KP",
                                 "range": [
@@ -7209,7 +7209,7 @@
                             {
                                 "children": [],
                                 "depends_on": "PID_ENABLED",
-                                "help": "Integral gain multiplied by 100. Value 20 = Ki of 0.20.",
+                                "help": "Ki \u00d7 100 (e.g. 20 = Ki of 0.20).\nHelps eliminate steady-state error.",
                                 "id": "PID_KI",
                                 "name": "PID_KI",
                                 "range": [
@@ -7222,7 +7222,7 @@
                             {
                                 "children": [],
                                 "depends_on": "PID_ENABLED",
-                                "help": "Derivative gain multiplied by 100. Value 5 = Kd of 0.05.",
+                                "help": "Kd \u00d7 100 (e.g. 5 = Kd of 0.05).\nDampens oscillations.",
                                 "id": "PID_KD",
                                 "name": "PID_KD",
                                 "range": [
@@ -7235,20 +7235,20 @@
                             {
                                 "children": [],
                                 "depends_on": "PID_ENABLED",
-                                "help": "Maximum absolute value of the integral accumulator.\nPrevents integral windup when the robot is stuck.",
+                                "help": "Maximum value of the integral accumulator.\nPrevents windup during extended turns.",
                                 "id": "PID_INTEGRAL_LIMIT",
                                 "name": "PID_INTEGRAL_LIMIT",
                                 "range": [
                                     1,
                                     1000
                                 ],
-                                "title": "Integral windup limit",
+                                "title": "Integral limit",
                                 "type": "int"
                             },
                             {
                                 "children": [],
                                 "depends_on": "PID_ENABLED",
-                                "help": "Maximum absolute PID correction applied to left/right\nmotor speed difference. Limits how aggressively the\nPID can steer.",
+                                "help": "Maximum correction applied to motor speed difference.\nUnits are percentage points.",
                                 "id": "PID_OUTPUT_LIMIT",
                                 "name": "PID_OUTPUT_LIMIT",
                                 "range": [
@@ -7278,7 +7278,125 @@
                     {
                         "children": [],
                         "depends_on": null,
-                        "help": "GPIO pin for I2C data line. Must not conflict with\nmotor, SPI (W5500), or camera pins.",
+                        "help": "7-bit I2C address of the MPU-9250/6500/6050.\nDefault is 0x68 (AD0 pin low).\nUse 0x69 if AD0 is tied high.",
+                        "id": "IMU_I2C_ADDR",
+                        "name": "IMU_I2C_ADDR",
+                        "range": null,
+                        "title": "IMU I2C address",
+                        "type": "hex"
+                    },
+                    {
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "<choice IMU_ACCEL_RANGE>",
+                                "help": "Best for detecting subtle movements.\nResolution: ~0.06 mg/LSB",
+                                "id": "IMU_ACCEL_RANGE_2G",
+                                "name": "IMU_ACCEL_RANGE_2G",
+                                "range": null,
+                                "title": "\u00b12g (highest resolution)",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IMU_ACCEL_RANGE>",
+                                "help": "Good balance of range and resolution.\nResolution: ~0.12 mg/LSB",
+                                "id": "IMU_ACCEL_RANGE_4G",
+                                "name": "IMU_ACCEL_RANGE_4G",
+                                "range": null,
+                                "title": "\u00b14g",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IMU_ACCEL_RANGE>",
+                                "help": "For fast-moving robots or rough terrain.\nResolution: ~0.24 mg/LSB",
+                                "id": "IMU_ACCEL_RANGE_8G",
+                                "name": "IMU_ACCEL_RANGE_8G",
+                                "range": null,
+                                "title": "\u00b18g",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IMU_ACCEL_RANGE>",
+                                "help": "For high-acceleration or impact detection.\nResolution: ~0.49 mg/LSB",
+                                "id": "IMU_ACCEL_RANGE_16G",
+                                "name": "IMU_ACCEL_RANGE_16G",
+                                "range": null,
+                                "title": "\u00b116g (highest range)",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": null,
+                        "help": "Select accelerometer measurement range.\nLower range = higher resolution.",
+                        "id": "robot-controller-configuration-imu-configuration-accelerometer-full-scale-range",
+                        "name": "IMU_ACCEL_RANGE",
+                        "title": "Accelerometer full-scale range",
+                        "type": "choice"
+                    },
+                    {
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "<choice IMU_GYRO_RANGE>",
+                                "help": "Best for slow, precise rotation tracking.\nResolution: ~0.0076 \u00b0/s/LSB",
+                                "id": "IMU_GYRO_RANGE_250",
+                                "name": "IMU_GYRO_RANGE_250",
+                                "range": null,
+                                "title": "\u00b1250 \u00b0/s (highest resolution)",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IMU_GYRO_RANGE>",
+                                "help": "Good for moderate rotation speeds.\nResolution: ~0.015 \u00b0/s/LSB",
+                                "id": "IMU_GYRO_RANGE_500",
+                                "name": "IMU_GYRO_RANGE_500",
+                                "range": null,
+                                "title": "\u00b1500 \u00b0/s",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IMU_GYRO_RANGE>",
+                                "help": "For fast-turning robots.\nResolution: ~0.030 \u00b0/s/LSB",
+                                "id": "IMU_GYRO_RANGE_1000",
+                                "name": "IMU_GYRO_RANGE_1000",
+                                "range": null,
+                                "title": "\u00b11000 \u00b0/s",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IMU_GYRO_RANGE>",
+                                "help": "For very fast rotation or spinning.\nResolution: ~0.061 \u00b0/s/LSB",
+                                "id": "IMU_GYRO_RANGE_2000",
+                                "name": "IMU_GYRO_RANGE_2000",
+                                "range": null,
+                                "title": "\u00b12000 \u00b0/s (highest range)",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": null,
+                        "help": "Select gyroscope measurement range.\nLower range = higher resolution for slow rotation.",
+                        "id": "robot-controller-configuration-imu-configuration-gyroscope-full-scale-range",
+                        "name": "IMU_GYRO_RANGE",
+                        "title": "Gyroscope full-scale range",
+                        "type": "choice"
+                    }
+                ],
+                "depends_on": null,
+                "id": "robot-controller-configuration-imu-configuration",
+                "title": "IMU Configuration",
+                "type": "menu"
+            },
+            {
+                "children": [
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "GPIO pin for I2C data line.\nWaveshare ESP32-S3-ETH: GPIO 48 (directly wired to camera connector).\nAll I2C devices (camera SCCB, IMU, URM09) share this bus.",
                         "id": "SENSOR_I2C_SDA",
                         "name": "SENSOR_I2C_SDA",
                         "range": [
@@ -7291,7 +7409,7 @@
                     {
                         "children": [],
                         "depends_on": null,
-                        "help": "GPIO pin for I2C clock line.",
+                        "help": "GPIO pin for I2C clock line.\nWaveshare ESP32-S3-ETH: GPIO 47 (directly wired to camera connector).\nAll I2C devices (camera SCCB, IMU, URM09) share this bus.",
                         "id": "SENSOR_I2C_SCL",
                         "name": "SENSOR_I2C_SCL",
                         "range": [
@@ -7300,16 +7418,6 @@
                         ],
                         "title": "I2C SCL GPIO",
                         "type": "int"
-                    },
-                    {
-                        "children": [],
-                        "depends_on": null,
-                        "help": "7-bit I2C address of the MPU-6050 IMU.\n0x68 when AD0 is low, 0x69 when AD0 is high.",
-                        "id": "IMU_I2C_ADDR",
-                        "name": "IMU_I2C_ADDR",
-                        "range": null,
-                        "title": "MPU-6050 I2C address",
-                        "type": "hex"
                     },
                     {
                         "children": [],
@@ -7354,6 +7462,19 @@
                         ],
                         "title": "Sensor task priority",
                         "type": "int"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "How often to read sensors. 100ms = 10 Hz.\nLower values give faster response but more CPU load.\nMust be >= 40ms for URM09 at 500cm range.",
+                        "id": "SENSOR_POLL_INTERVAL_MS",
+                        "name": "SENSOR_POLL_INTERVAL_MS",
+                        "range": [
+                            10,
+                            1000
+                        ],
+                        "title": "Sensor poll interval (ms)",
+                        "type": "int"
                     }
                 ],
                 "depends_on": null,
@@ -7366,7 +7487,7 @@
                     {
                         "children": [],
                         "depends_on": null,
-                        "help": "TCP port on which the ESP32 listens for motor commands\nfrom the ROS2 waveshare_driver node on the Pi.\nProtocol: JSON lines, e.g. {\"linear\":0.5,\"angular\":0.1}",
+                        "help": "TCP port on which the ESP32 listens for motor commands\nfrom the ROS2 waveshare_driver node on the Pi.\nProtocol: JSON lines, e.g. {\"cmd\":\"motor\",\"linear\":0.5,\"angular\":0.1}",
                         "id": "TCP_CMD_PORT",
                         "name": "TCP_CMD_PORT",
                         "range": [
@@ -7392,7 +7513,7 @@
                     {
                         "children": [],
                         "depends_on": null,
-                        "help": "IP address of the Raspberry Pi running the ROS2\nwaveshare_driver node. The ESP32 connects to this\naddress on the sensor port to send IMU and range data.",
+                        "help": "IP address of the Raspberry Pi (or Mac running Docker)\nwith the ROS2 waveshare_driver node. The ESP32 connects\nto this address on the sensor port to send IMU and range data.\n\nFor Docker on Mac: Use your Mac's local IP address\n(run 'ipconfig getifaddr en0' to find it).",
                         "id": "TCP_SENSOR_HOST",
                         "name": "TCP_SENSOR_HOST",
                         "range": null,
@@ -7427,10 +7548,13 @@
                                     {
                                         "children": [],
                                         "depends_on": "CAMERA_ENABLED",
-                                        "help": "GPIO for camera power down. -1 if not connected.",
+                                        "help": "GPIO for camera power control (drives MOSFET).\nWaveshare ESP32-S3-ETH: GPIO 8.",
                                         "id": "CAM_PIN_PWDN",
                                         "name": "CAM_PIN_PWDN",
-                                        "range": null,
+                                        "range": [
+                                            -1,
+                                            48
+                                        ],
                                         "title": "Power down pin",
                                         "type": "int"
                                     },
@@ -7440,38 +7564,50 @@
                                         "help": "GPIO for camera reset. -1 if not connected.",
                                         "id": "CAM_PIN_RESET",
                                         "name": "CAM_PIN_RESET",
-                                        "range": null,
+                                        "range": [
+                                            -1,
+                                            48
+                                        ],
                                         "title": "Reset pin",
                                         "type": "int"
                                     },
                                     {
                                         "children": [],
                                         "depends_on": "CAMERA_ENABLED",
-                                        "help": null,
+                                        "help": "Waveshare ESP32-S3-ETH: GPIO 3.",
                                         "id": "CAM_PIN_XCLK",
                                         "name": "CAM_PIN_XCLK",
-                                        "range": null,
+                                        "range": [
+                                            0,
+                                            48
+                                        ],
                                         "title": "XCLK pin",
                                         "type": "int"
                                     },
                                     {
                                         "children": [],
                                         "depends_on": "CAMERA_ENABLED",
-                                        "help": null,
+                                        "help": "Camera SCCB data pin (I2C-like protocol).\nWaveshare ESP32-S3-ETH: GPIO 48.\nWARNING: Do not use for external I2C sensors!",
                                         "id": "CAM_PIN_SIOD",
                                         "name": "CAM_PIN_SIOD",
-                                        "range": null,
-                                        "title": "SCCB SDA pin",
+                                        "range": [
+                                            0,
+                                            48
+                                        ],
+                                        "title": "SCCB SDA pin (camera I2C)",
                                         "type": "int"
                                     },
                                     {
                                         "children": [],
                                         "depends_on": "CAMERA_ENABLED",
-                                        "help": null,
+                                        "help": "Camera SCCB clock pin (I2C-like protocol).\nWaveshare ESP32-S3-ETH: GPIO 47.\nWARNING: Do not use for external I2C sensors!",
                                         "id": "CAM_PIN_SIOC",
                                         "name": "CAM_PIN_SIOC",
-                                        "range": null,
-                                        "title": "SCCB SCL pin",
+                                        "range": [
+                                            0,
+                                            48
+                                        ],
+                                        "title": "SCCB SCL pin (camera I2C)",
                                         "type": "int"
                                     },
                                     {
@@ -7480,7 +7616,10 @@
                                         "help": null,
                                         "id": "CAM_PIN_D7",
                                         "name": "CAM_PIN_D7",
-                                        "range": null,
+                                        "range": [
+                                            0,
+                                            48
+                                        ],
                                         "title": "Data pin D7",
                                         "type": "int"
                                     },
@@ -7490,7 +7629,10 @@
                                         "help": null,
                                         "id": "CAM_PIN_D6",
                                         "name": "CAM_PIN_D6",
-                                        "range": null,
+                                        "range": [
+                                            0,
+                                            48
+                                        ],
                                         "title": "Data pin D6",
                                         "type": "int"
                                     },
@@ -7500,7 +7642,10 @@
                                         "help": null,
                                         "id": "CAM_PIN_D5",
                                         "name": "CAM_PIN_D5",
-                                        "range": null,
+                                        "range": [
+                                            0,
+                                            48
+                                        ],
                                         "title": "Data pin D5",
                                         "type": "int"
                                     },
@@ -7510,7 +7655,10 @@
                                         "help": null,
                                         "id": "CAM_PIN_D4",
                                         "name": "CAM_PIN_D4",
-                                        "range": null,
+                                        "range": [
+                                            0,
+                                            48
+                                        ],
                                         "title": "Data pin D4",
                                         "type": "int"
                                     },
@@ -7520,7 +7668,10 @@
                                         "help": null,
                                         "id": "CAM_PIN_D3",
                                         "name": "CAM_PIN_D3",
-                                        "range": null,
+                                        "range": [
+                                            0,
+                                            48
+                                        ],
                                         "title": "Data pin D3",
                                         "type": "int"
                                     },
@@ -7530,7 +7681,10 @@
                                         "help": null,
                                         "id": "CAM_PIN_D2",
                                         "name": "CAM_PIN_D2",
-                                        "range": null,
+                                        "range": [
+                                            0,
+                                            48
+                                        ],
                                         "title": "Data pin D2",
                                         "type": "int"
                                     },
@@ -7540,7 +7694,10 @@
                                         "help": null,
                                         "id": "CAM_PIN_D1",
                                         "name": "CAM_PIN_D1",
-                                        "range": null,
+                                        "range": [
+                                            0,
+                                            48
+                                        ],
                                         "title": "Data pin D1",
                                         "type": "int"
                                     },
@@ -7550,7 +7707,10 @@
                                         "help": null,
                                         "id": "CAM_PIN_D0",
                                         "name": "CAM_PIN_D0",
-                                        "range": null,
+                                        "range": [
+                                            0,
+                                            48
+                                        ],
                                         "title": "Data pin D0",
                                         "type": "int"
                                     },
@@ -7560,7 +7720,10 @@
                                         "help": null,
                                         "id": "CAM_PIN_VSYNC",
                                         "name": "CAM_PIN_VSYNC",
-                                        "range": null,
+                                        "range": [
+                                            0,
+                                            48
+                                        ],
                                         "title": "VSYNC pin",
                                         "type": "int"
                                     },
@@ -7570,7 +7733,10 @@
                                         "help": null,
                                         "id": "CAM_PIN_HREF",
                                         "name": "CAM_PIN_HREF",
-                                        "range": null,
+                                        "range": [
+                                            0,
+                                            48
+                                        ],
                                         "title": "HREF pin",
                                         "type": "int"
                                     },
@@ -7580,14 +7746,17 @@
                                         "help": null,
                                         "id": "CAM_PIN_PCLK",
                                         "name": "CAM_PIN_PCLK",
-                                        "range": null,
+                                        "range": [
+                                            0,
+                                            48
+                                        ],
                                         "title": "PCLK pin",
                                         "type": "int"
                                     }
                                 ],
                                 "depends_on": "CAMERA_ENABLED",
-                                "id": "robot-controller-configuration-camera-configuration-enable-camera-support-camera-gpio-pins",
-                                "title": "Camera GPIO Pins",
+                                "id": "robot-controller-configuration-camera-configuration-enable-camera-support-camera-gpio-pins-waveshare-esp32-s3-eth-",
+                                "title": "Camera GPIO Pins (Waveshare ESP32-S3-ETH)",
                                 "type": "menu"
                             }
                         ],

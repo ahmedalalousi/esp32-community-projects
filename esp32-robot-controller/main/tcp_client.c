@@ -32,7 +32,7 @@ static const char *TAG = "TCP_CLT";
 #define SENSOR_HOST         CONFIG_TCP_SENSOR_HOST
 #define SEND_INTERVAL_MS    100     /* 10 Hz — matches sensor poll rate */
 #define RECONNECT_DELAY_MS  2000
-#define TX_BUFFER_SIZE      256
+#define TX_BUFFER_SIZE      512     /* Increased for magnetometer data */
 
 /* =========================================================================
  * State
@@ -112,21 +112,38 @@ static void tcp_client_task(void *arg)
 
         /* Read and send IMU data */
         if (sensor_get_imu(&imu) == ESP_OK) {
-            int len = snprintf(tx_buf, sizeof(tx_buf),
-                "{\"type\":\"imu\","
-                "\"ax\":%.3f,\"ay\":%.3f,\"az\":%.3f,"
-                "\"gx\":%.4f,\"gy\":%.4f,\"gz\":%.4f,"
-                "\"temp\":%.1f}\n",
-                imu.accel_x, imu.accel_y, imu.accel_z,
-                imu.gyro_x, imu.gyro_y, imu.gyro_z,
-                imu.temperature);
+            int len;
+
+            /* Include magnetometer data if available */
+            if (imu.mag_valid) {
+                len = snprintf(tx_buf, sizeof(tx_buf),
+                    "{\"type\":\"imu\","
+                    "\"ax\":%.3f,\"ay\":%.3f,\"az\":%.3f,"
+                    "\"gx\":%.4f,\"gy\":%.4f,\"gz\":%.4f,"
+                    "\"mx\":%.2f,\"my\":%.2f,\"mz\":%.2f,"
+                    "\"temp\":%.1f}\n",
+                    imu.accel_x, imu.accel_y, imu.accel_z,
+                    imu.gyro_x, imu.gyro_y, imu.gyro_z,
+                    imu.mag_x, imu.mag_y, imu.mag_z,
+                    imu.temperature);
+            } else {
+                /* 6-axis only (MPU-6500/6050) */
+                len = snprintf(tx_buf, sizeof(tx_buf),
+                    "{\"type\":\"imu\","
+                    "\"ax\":%.3f,\"ay\":%.3f,\"az\":%.3f,"
+                    "\"gx\":%.4f,\"gy\":%.4f,\"gz\":%.4f,"
+                    "\"temp\":%.1f}\n",
+                    imu.accel_x, imu.accel_y, imu.accel_z,
+                    imu.gyro_x, imu.gyro_y, imu.gyro_z,
+                    imu.temperature);
+            }
 
             if (send(sock, tx_buf, len, 0) < 0) {
                 ESP_LOGE(TAG, "IMU send failed: errno %d", errno);
                 close(sock);
                 sock = -1;
                 connected = false;
-                motor_driver_stop();
+                motor_driver_stop();  /* Safety: stop on disconnect */
                 continue;
             }
         }
@@ -142,6 +159,7 @@ static void tcp_client_task(void *arg)
                 close(sock);
                 sock = -1;
                 connected = false;
+                motor_driver_stop();  /* Safety: stop on disconnect */
                 continue;
             }
         }
