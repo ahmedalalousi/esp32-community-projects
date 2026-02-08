@@ -661,28 +661,15 @@ CONFIG_PID_OUTPUT_LIMIT=30
 # end of PID Heading Correction
 
 #
-# IMU Configuration
-#
-CONFIG_IMU_I2C_ADDR=0x68
-CONFIG_IMU_ACCEL_RANGE_2G=y
-# CONFIG_IMU_ACCEL_RANGE_4G is not set
-# CONFIG_IMU_ACCEL_RANGE_8G is not set
-# CONFIG_IMU_ACCEL_RANGE_16G is not set
-CONFIG_IMU_GYRO_RANGE_250=y
-# CONFIG_IMU_GYRO_RANGE_500 is not set
-# CONFIG_IMU_GYRO_RANGE_1000 is not set
-# CONFIG_IMU_GYRO_RANGE_2000 is not set
-# end of IMU Configuration
-
-#
 # I2C Bus Configuration
 #
 
 #
-# Shared I2C bus for all devices (camera, IMU, URM09)
+# Shared I2C bus for IMU and ultrasonic sensor
 #
 CONFIG_SENSOR_I2C_SDA=48
 CONFIG_SENSOR_I2C_SCL=47
+CONFIG_IMU_I2C_ADDR=0x68
 CONFIG_URM09_I2C_ADDR=0x11
 # end of I2C Bus Configuration
 
@@ -709,11 +696,22 @@ CONFIG_TCP_CAMERA_PORT=8082
 CONFIG_CAMERA_ENABLED=y
 
 #
-# Camera GPIO Pins (Waveshare ESP32-S3-ETH)
+# Camera Image Settings
 #
+# CONFIG_CAM_FRAME_SIZE_QQVGA is not set
+CONFIG_CAM_FRAME_SIZE_QVGA=y
+# CONFIG_CAM_FRAME_SIZE_CIF is not set
+# CONFIG_CAM_FRAME_SIZE_HVGA is not set
+# CONFIG_CAM_FRAME_SIZE_VGA is not set
+# CONFIG_CAM_FRAME_SIZE_SVGA is not set
+# CONFIG_CAM_FRAME_SIZE_XGA is not set
+CONFIG_CAM_JPEG_QUALITY=15
+CONFIG_CAM_FRAME_RATE=10
+CONFIG_CAM_FB_COUNT=2
+# end of Camera Image Settings
 
 #
-# Pinout from Waveshare ESP32-S3-ETH schematic
+# Camera GPIO Pins
 #
 CONFIG_CAM_PIN_PWDN=-1
 CONFIG_CAM_PIN_RESET=-1
@@ -731,7 +729,7 @@ CONFIG_CAM_PIN_D0=41
 CONFIG_CAM_PIN_VSYNC=1
 CONFIG_CAM_PIN_HREF=2
 CONFIG_CAM_PIN_PCLK=39
-# end of Camera GPIO Pins (Waveshare ESP32-S3-ETH)
+# end of Camera GPIO Pins
 # end of Camera Configuration
 # end of Robot Controller Configuration
 

@@ -5,8 +5,11 @@
  * Uses the ESP-IDF camera driver and HTTP server to stream JPEG
  * frames as multipart/x-mixed-replace (MJPEG).
  *
+ * Camera settings (frame size, JPEG quality, frame rate) are
+ * configured via Kconfig under "Camera Configuration > Camera Image Settings".
+ *
  * Camera pin mapping for Waveshare ESP32-S3-ETH:
- *   Configured via Kconfig under "Camera Configuration".
+ *   Configured via Kconfig under "Camera Configuration > Camera GPIO Pins".
  *   Default pins match the Waveshare board's camera connector.
  *
  * @author Ahmed Al-Alousi
@@ -27,14 +30,12 @@
 static const char *TAG = "CAM_SVR";
 
 /* =========================================================================
- * Camera Pin Configuration (Waveshare ESP32-S3-ETH defaults)
- *
- * These are configured via Kconfig. The defaults below match the
- * Waveshare board's camera FPC connector pinout.
+ * Camera Configuration from Kconfig
  * ========================================================================= */
 
 #ifdef CONFIG_CAMERA_ENABLED
 
+/* GPIO Pin Configuration */
 #define CAM_PIN_PWDN    CONFIG_CAM_PIN_PWDN
 #define CAM_PIN_RESET   CONFIG_CAM_PIN_RESET
 #define CAM_PIN_XCLK    CONFIG_CAM_PIN_XCLK
@@ -51,6 +52,39 @@ static const char *TAG = "CAM_SVR";
 #define CAM_PIN_VSYNC   CONFIG_CAM_PIN_VSYNC
 #define CAM_PIN_HREF    CONFIG_CAM_PIN_HREF
 #define CAM_PIN_PCLK    CONFIG_CAM_PIN_PCLK
+
+/* Image Settings from Kconfig */
+#define CAM_JPEG_QUALITY    CONFIG_CAM_JPEG_QUALITY
+#define CAM_FRAME_RATE      CONFIG_CAM_FRAME_RATE
+#define CAM_FB_COUNT        CONFIG_CAM_FB_COUNT
+
+/* Frame size selection from Kconfig choice */
+#if defined(CONFIG_CAM_FRAME_SIZE_QQVGA)
+    #define CAM_FRAME_SIZE      FRAMESIZE_QQVGA
+    #define CAM_FRAME_SIZE_STR  "QQVGA (160x120)"
+#elif defined(CONFIG_CAM_FRAME_SIZE_QVGA)
+    #define CAM_FRAME_SIZE      FRAMESIZE_QVGA
+    #define CAM_FRAME_SIZE_STR  "QVGA (320x240)"
+#elif defined(CONFIG_CAM_FRAME_SIZE_CIF)
+    #define CAM_FRAME_SIZE      FRAMESIZE_CIF
+    #define CAM_FRAME_SIZE_STR  "CIF (400x296)"
+#elif defined(CONFIG_CAM_FRAME_SIZE_HVGA)
+    #define CAM_FRAME_SIZE      FRAMESIZE_HVGA
+    #define CAM_FRAME_SIZE_STR  "HVGA (480x320)"
+#elif defined(CONFIG_CAM_FRAME_SIZE_VGA)
+    #define CAM_FRAME_SIZE      FRAMESIZE_VGA
+    #define CAM_FRAME_SIZE_STR  "VGA (640x480)"
+#elif defined(CONFIG_CAM_FRAME_SIZE_SVGA)
+    #define CAM_FRAME_SIZE      FRAMESIZE_SVGA
+    #define CAM_FRAME_SIZE_STR  "SVGA (800x600)"
+#elif defined(CONFIG_CAM_FRAME_SIZE_XGA)
+    #define CAM_FRAME_SIZE      FRAMESIZE_XGA
+    #define CAM_FRAME_SIZE_STR  "XGA (1024x768)"
+#else
+    /* Default fallback */
+    #define CAM_FRAME_SIZE      FRAMESIZE_QVGA
+    #define CAM_FRAME_SIZE_STR  "QVGA (320x240) [default]"
+#endif
 
 #endif /* CONFIG_CAMERA_ENABLED */
 
@@ -80,11 +114,16 @@ static bool camera_initialised = false;
  *
  * Captures frames from the camera and sends them as a continuous
  * MJPEG stream using multipart/x-mixed-replace.
+ *
+ * Frame rate is controlled by CAM_FRAME_RATE from Kconfig.
  */
 static esp_err_t stream_handler(httpd_req_t *req)
 {
     esp_err_t err;
     char part_header[64];
+
+    /* Calculate frame delay from configured frame rate */
+    const TickType_t frame_delay_ms = 1000 / CAM_FRAME_RATE;
 
     /* Set response content type */
     err = httpd_resp_set_type(req, MJPEG_CONTENT_TYPE);
@@ -96,7 +135,8 @@ static esp_err_t stream_handler(httpd_req_t *req)
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
 
-    ESP_LOGI(TAG, "MJPEG stream started");
+    ESP_LOGI(TAG, "MJPEG stream started (target %d fps, %lu ms/frame)",
+             CAM_FRAME_RATE, (unsigned long)frame_delay_ms);
 
     while (1) {
         /* Capture a frame */
@@ -129,8 +169,8 @@ static esp_err_t stream_handler(httpd_req_t *req)
             break;
         }
 
-        /* Small delay to control frame rate (~15 fps) */
-        vTaskDelay(pdMS_TO_TICKS(66));
+        /* Delay to control frame rate */
+        vTaskDelay(pdMS_TO_TICKS(frame_delay_ms));
     }
 
     ESP_LOGI(TAG, "MJPEG stream ended");
@@ -194,8 +234,8 @@ esp_err_t camera_init(void)
         .pin_reset  = CAM_PIN_RESET,
         .pin_xclk   = CAM_PIN_XCLK,
         /* Let camera driver own SCCB pins */
-        .pin_sccb_sda = CAM_PIN_SIOD,   /* GPIO 48 */
-        .pin_sccb_scl = CAM_PIN_SIOC,   /* GPIO 47 */
+        .pin_sccb_sda = CAM_PIN_SIOD,
+        .pin_sccb_scl = CAM_PIN_SIOC,
         .pin_d7     = CAM_PIN_D7,
         .pin_d6     = CAM_PIN_D6,
         .pin_d5     = CAM_PIN_D5,
@@ -207,13 +247,13 @@ esp_err_t camera_init(void)
         .pin_vsync  = CAM_PIN_VSYNC,
         .pin_href   = CAM_PIN_HREF,
         .pin_pclk   = CAM_PIN_PCLK,
-        .xclk_freq_hz = 20000000,       /* 20 MHz XCLK */
-        .ledc_timer   = LEDC_TIMER_1,   /* Timer 1 (Timer 0 used by motors) */
-        .ledc_channel = LEDC_CHANNEL_4, /* Channel 4+ (0-3 used by motors) */
+        .xclk_freq_hz = 20000000,        /* 20 MHz XCLK */
+        .ledc_timer   = LEDC_TIMER_1,    /* Timer 1 (Timer 0 used by motors) */
+        .ledc_channel = LEDC_CHANNEL_4,  /* Channel 4+ (0-3 used by motors) */
         .pixel_format = PIXFORMAT_JPEG,
-        .frame_size   = FRAMESIZE_VGA,   /* 640x480 — good balance */
-        .jpeg_quality = 12,              /* 0-63, lower = better quality */
-        .fb_count     = 2,               /* Double-buffer for streaming */
+        .frame_size   = CAM_FRAME_SIZE,  /* From Kconfig */
+        .jpeg_quality = CAM_JPEG_QUALITY,/* From Kconfig (0-63, lower = better) */
+        .fb_count     = CAM_FB_COUNT,    /* From Kconfig */
         .grab_mode    = CAMERA_GRAB_LATEST
     };
 
@@ -224,7 +264,23 @@ esp_err_t camera_init(void)
     }
 
     camera_initialised = true;
-    ESP_LOGI(TAG, "Camera initialised (VGA, JPEG quality=%d)", cam_cfg.jpeg_quality);
+    ESP_LOGI(TAG, "Camera initialised:");
+    ESP_LOGI(TAG, "  Resolution:   %s", CAM_FRAME_SIZE_STR);
+    ESP_LOGI(TAG, "  JPEG quality: %d (0=best, 63=worst)", CAM_JPEG_QUALITY);
+    ESP_LOGI(TAG, "  Frame rate:   %d fps", CAM_FRAME_RATE);
+    ESP_LOGI(TAG, "  Buffers:      %d", CAM_FB_COUNT);
+
+    /* Warn if settings are likely to cause overheating */
+    if (CAM_FRAME_SIZE >= FRAMESIZE_VGA) {
+        ESP_LOGW(TAG, "WARNING: High resolution may cause camera overheating!");
+    }
+    if (CAM_JPEG_QUALITY < 15) {
+        ESP_LOGW(TAG, "WARNING: Low JPEG quality value increases encoding heat!");
+    }
+    if (CAM_FRAME_RATE > 15) {
+        ESP_LOGW(TAG, "WARNING: High frame rate may cause camera overheating!");
+    }
+
     return ESP_OK;
 #endif
 }
