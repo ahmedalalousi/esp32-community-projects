@@ -350,14 +350,6 @@ menu "Robot Controller Configuration"
                 timely IMU reads for PID correction, but lower than
                 the motor control priority.
 
-	config SENSOR_POLL_INTERVAL_MS
-            int "Sensor poll interval (ms)"
-            default 100
-            range 10 1000
-            help
-                How often to read sensors. 100ms = 10 Hz.
-                Must be >= 40ms for URM09 at 500cm range.
-
     endmenu  # Sensor Task Configuration
 
     # ========================================================================
